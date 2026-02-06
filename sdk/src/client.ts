@@ -2,6 +2,7 @@ import { API_KEY_ENV_VAR } from '@codebuff/common/constants/paths'
 
 import { WEBSITE_URL } from './constants'
 import { getCodebuffApiKeyFromEnv } from './env'
+import { isDirectMode } from './impl/model-provider'
 import { run } from './run'
 
 import type { RunOptions, CodebuffClientOptions } from './run'
@@ -14,7 +15,8 @@ export class CodebuffClient {
   }
 
   constructor(options: CodebuffClientOptions) {
-    const foundApiKey = options.apiKey ?? getCodebuffApiKeyFromEnv()
+    const directMode = isDirectMode()
+    const foundApiKey = options.apiKey ?? getCodebuffApiKeyFromEnv() ?? (directMode ? 'direct-openrouter-mode' : undefined)
     if (!foundApiKey) {
       throw new Error(
         `Codebuff API key not found. Please provide an apiKey in the constructor of CodebuffClient or set the ${API_KEY_ENV_VAR} environment variable.`,
@@ -64,6 +66,10 @@ export class CodebuffClient {
    * @returns Promise that resolves to true if connected, false otherwise
    */
   public async checkConnection(): Promise<boolean> {
+    if (isDirectMode()) {
+      return true
+    }
+
     try {
       const response = await fetch(`${WEBSITE_URL}/api/healthz`, {
         method: 'GET',

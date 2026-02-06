@@ -13,6 +13,7 @@ tags
 node_modules
 dev
 dist
+!sdk/dist
 dist-env
 tsconfig.tsbuildinfo
 .manicode

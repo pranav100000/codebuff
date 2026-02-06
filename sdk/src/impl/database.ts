@@ -4,6 +4,7 @@ import { getErrorObject } from '@codebuff/common/util/error'
 import z from 'zod/v4'
 
 import { WEBSITE_URL } from '../constants'
+import { isDirectMode } from './model-provider'
 import {
   createAuthError,
   createNetworkError,
@@ -98,6 +99,14 @@ async function fetchWithRetry(
 export async function getUserInfoFromApiKey<T extends UserColumn>(
   params: GetUserInfoFromApiKeyInput<T>,
 ): GetUserInfoFromApiKeyOutput<T> {
+  if (isDirectMode()) {
+    // In direct mode, return a stub user with requested fields
+    const stub: Record<string, unknown> = { id: 'direct-mode-user' }
+    return Object.fromEntries(
+      params.fields.map((field) => [field, stub[field as string] ?? null]),
+    ) as Awaited<GetUserInfoFromApiKeyOutput<T>>
+  }
+
   const { apiKey, fields, logger } = params
 
   const cached = userInfoCache[apiKey]
@@ -215,6 +224,10 @@ export async function getUserInfoFromApiKey<T extends UserColumn>(
 export async function fetchAgentFromDatabase(
   params: ParamsOf<FetchAgentFromDatabaseFn>,
 ): ReturnType<FetchAgentFromDatabaseFn> {
+  if (isDirectMode()) {
+    return null
+  }
+
   const { apiKey, parsedAgentId, logger } = params
   const { publisherId, agentId, version } = parsedAgentId
 
@@ -302,6 +315,10 @@ export async function fetchAgentFromDatabase(
 export async function startAgentRun(
   params: ParamsOf<StartAgentRunFn>,
 ): ReturnType<StartAgentRunFn> {
+  if (isDirectMode()) {
+    return crypto.randomUUID()
+  }
+
   const { apiKey, agentId, ancestorRunIds, logger } = params
 
   const url = new URL(`/api/v1/agent-runs`, WEBSITE_URL)
@@ -348,6 +365,10 @@ export async function startAgentRun(
 export async function finishAgentRun(
   params: ParamsOf<FinishAgentRunFn>,
 ): ReturnType<FinishAgentRunFn> {
+  if (isDirectMode()) {
+    return
+  }
+
   const {
     apiKey,
     runId,
@@ -395,6 +416,10 @@ export async function finishAgentRun(
 export async function addAgentStep(
   params: ParamsOf<AddAgentStepFn>,
 ): ReturnType<AddAgentStepFn> {
+  if (isDirectMode()) {
+    return crypto.randomUUID()
+  }
+
   const {
     apiKey,
     agentRunId,

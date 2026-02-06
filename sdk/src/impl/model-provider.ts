@@ -28,6 +28,78 @@ import { getByokOpenrouterApiKeyFromEnv } from '../env'
 import type { LanguageModel } from 'ai'
 
 // ============================================================================
+// Direct OpenRouter Mode
+// ============================================================================
+
+/**
+ * Check if direct OpenRouter mode is enabled.
+ * When OPENROUTER_API_KEY is set, all requests go directly to OpenRouter
+ * bypassing the Codebuff backend entirely.
+ */
+export function isDirectMode(): boolean {
+  return !!process.env.OPENROUTER_API_KEY
+}
+
+/**
+ * Create a model that routes directly to OpenRouter, bypassing the Codebuff backend.
+ * Uses the same OpenAICompatibleChatLanguageModel as the Codebuff backend model,
+ * but pointed at OpenRouter's API endpoint with the user's own API key.
+ */
+function createDirectOpenRouterModel(openRouterApiKey: string, model: string): LanguageModel {
+  const openrouterUsage: OpenRouterUsageAccounting = {
+    cost: null,
+    costDetails: {
+      upstreamInferenceCost: null,
+    },
+  }
+
+  return new OpenAICompatibleChatLanguageModel(model, {
+    provider: 'codebuff',
+    url: ({ path: endpoint }) => `https://openrouter.ai/api/v1${endpoint}`,
+    headers: () => ({
+      Authorization: `Bearer ${openRouterApiKey}`,
+      'HTTP-Referer': 'https://codebuff.com',
+      'X-Title': 'Codebuff',
+    }),
+    metadataExtractor: {
+      extractMetadata: async ({ parsedBody }: { parsedBody: any }) => {
+        if (typeof parsedBody?.usage?.cost === 'number') {
+          openrouterUsage.cost = parsedBody.usage.cost
+        }
+        if (
+          typeof parsedBody?.usage?.cost_details?.upstream_inference_cost ===
+          'number'
+        ) {
+          openrouterUsage.costDetails.upstreamInferenceCost =
+            parsedBody.usage.cost_details.upstream_inference_cost
+        }
+        return { codebuff: { usage: openrouterUsage } }
+      },
+      createStreamExtractor: () => ({
+        processChunk: (parsedChunk: any) => {
+          if (typeof parsedChunk?.usage?.cost === 'number') {
+            openrouterUsage.cost = parsedChunk.usage.cost
+          }
+          if (
+            typeof parsedChunk?.usage?.cost_details?.upstream_inference_cost ===
+            'number'
+          ) {
+            openrouterUsage.costDetails.upstreamInferenceCost =
+              parsedChunk.usage.cost_details.upstream_inference_cost
+          }
+        },
+        buildMetadata: () => {
+          return { codebuff: { usage: openrouterUsage } }
+        },
+      }),
+    },
+    fetch: undefined,
+    includeUsage: undefined,
+    supportsStructuredOutputs: true,
+  })
+}
+
+// ============================================================================
 // Claude OAuth Rate Limit Cache
 // ============================================================================
 
@@ -169,6 +241,14 @@ type OpenRouterUsageAccounting = {
  */
 export async function getModelForRequest(params: ModelRequestParams): Promise<ModelResult> {
   const { apiKey, model, skipClaudeOAuth } = params
+
+  // Direct OpenRouter mode: bypass all Codebuff backend/OAuth logic
+  if (process.env.OPENROUTER_API_KEY) {
+    return {
+      model: createDirectOpenRouterModel(process.env.OPENROUTER_API_KEY, model),
+      isClaudeOAuth: false,
+    }
+  }
 
   // Check if we should use Claude OAuth direct
   // Skip if explicitly requested, if rate-limited, or if not a Claude model
