@@ -138,25 +138,5 @@ export function convertToOpenAICompatibleChatMessages(
     }
   }
 
-  // Debug: dump OpenAI-format message summary to catch tool_use_id mismatches
-  console.error('[SDK DEBUG] OpenAI-format messages (' + messages.length + '):')
-  for (let i = 0; i < messages.length; i++) {
-    const m = messages[i] as Record<string, unknown>
-    const role = m.role as string
-    if (role === 'tool') {
-      console.error(`  [${i}] tool tool_call_id=${(m as { tool_call_id?: string }).tool_call_id}`)
-    } else if (role === 'assistant') {
-      const toolCalls = (m as { tool_calls?: Array<{ id: string; function?: { name: string } }> }).tool_calls
-      if (toolCalls?.length) {
-        const ids = toolCalls.map(tc => `${tc.function?.name}:${tc.id}`)
-        console.error(`  [${i}] assistant tool_calls=[${ids.join(', ')}]`)
-      } else {
-        console.error(`  [${i}] assistant (text)`)
-      }
-    } else {
-      console.error(`  [${i}] ${role}`)
-    }
-  }
-
   return messages
 }

@@ -82,7 +82,7 @@ export async function runProgrammaticStep(
     | 'toolCallId'
     | 'toolCalls'
     | 'toolResults'
-    | 'toolResultsToAddAfterStream'
+    | 'toolResultsToAddToMessageHistory'
   > &
     ParamsExcluding<
       AddAgentStepFn,
@@ -428,7 +428,7 @@ type ExecuteToolCallsArrayParams = Omit<
   | 'autoInsertEndStepParam'
   | 'excludeToolFromMessageHistory'
   | 'toolCallId'
-  | 'toolResultsToAddAfterStream'
+  | 'toolResultsToAddToMessageHistory'
 > & {
   agentState: AgentState
   onResponseChunk: (chunk: string | PrintModeEvent) => void
@@ -494,7 +494,7 @@ async function executeSingleToolCall(
     excludeToolFromMessageHistory,
     fromHandleSteps: true,
     toolCallId,
-    toolResultsToAddAfterStream: [],
+    toolResultsToAddToMessageHistory: [],
 
     onResponseChunk: (chunk: string | PrintModeEvent) => {
       if (typeof chunk === 'string') {

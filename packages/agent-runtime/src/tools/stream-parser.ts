@@ -14,7 +14,7 @@ import {
   executeToolCall,
   tryTransformAgentToolCall,
 } from './tool-executor'
-import { expireMessages, withSystemTags } from '../util/messages'
+import { withSystemTags } from '../util/messages'
 
 import type { CustomToolCall, ExecuteToolCallParams } from './tool-executor'
 import type { AgentTemplate } from '../templates/types'
@@ -60,7 +60,7 @@ export async function processStream(
     | 'toolCalls'
     | 'toolName'
     | 'toolResults'
-    | 'toolResultsToAddAfterStream'
+    | 'toolResultsToAddToMessageHistory'
   > &
     ParamsExcluding<
       typeof processStreamWithTools,
@@ -84,14 +84,11 @@ export async function processStream(
     userId,
   } = params
   const fullResponseChunks: string[] = [fullResponse]
-  const messageHistoryBeforeStream = expireMessages(
-    agentState.messageHistory,
-    'agentStep',
-  )
+  const messageHistoryBeforeStream = [...agentState.messageHistory]
 
   // === MUTABLE STATE ===
   const toolResults: ToolMessage[] = []
-  const toolResultsToAddAfterStream: ToolMessage[] = []
+  const toolResultsToAddToMessageHistory: ToolMessage[] = []
   const toolCalls: (CodebuffToolCall | CustomToolCall)[] = []
   const assistantMessages: Message[] = []
   let hadToolCallError = false
@@ -149,7 +146,7 @@ export async function processStream(
   // isXmlMode=false: defer execution, results added at end (for native tool calls)
   function createToolExecutionCallback(toolName: string, isXmlMode: boolean) {
     const responseHandler = createResponseHandler(isXmlMode)
-    const resultsArray = isXmlMode ? [] : toolResultsToAddAfterStream
+    const resultsArray = isXmlMode ? [] : toolResultsToAddToMessageHistory
 
     return {
       onTagStart: () => {},
@@ -188,14 +185,14 @@ export async function processStream(
               : (toolName as ToolName),
             input: transformed ? transformed.input : input,
             fromHandleSteps: false,
-            skipDirectResultPush: true,
+
             fileProcessingState,
             fullResponse: fullResponseChunks.join(''),
             previousToolCallFinished: previousPromise,
             toolCallId,
             toolCalls,
             toolResults,
-            toolResultsToAddAfterStream: resultsArray,
+            toolResultsToAddToMessageHistory: resultsArray,
             onCostCalculated,
             onResponseChunk: responseHandler,
           })
@@ -205,14 +202,14 @@ export async function processStream(
             ...params,
             toolName,
             input,
-            skipDirectResultPush: true,
+
             fileProcessingState,
             fullResponse: fullResponseChunks.join(''),
             previousToolCallFinished: previousPromise,
             toolCallId,
             toolCalls,
             toolResults,
-            toolResultsToAddAfterStream: resultsArray,
+            toolResultsToAddToMessageHistory: resultsArray,
             onResponseChunk: responseHandler,
           })
         }
@@ -250,7 +247,7 @@ export async function processStream(
         content: jsonToolResult({ errorMessage: error }),
       }
       toolResults.push(cloneDeep(toolResult))
-      toolResultsToAddAfterStream.push(cloneDeep(toolResult))
+      toolResultsToAddToMessageHistory.push(cloneDeep(toolResult))
     },
     loggerOptions: {
       userId,
@@ -344,7 +341,7 @@ export async function processStream(
   agentState.messageHistory = buildArray<Message>([
     ...messageHistoryBeforeStream,
     ...assistantMessages,
-    ...toolResultsToAddAfterStream,
+    ...toolResultsToAddToMessageHistory,
     ...errorMessages,
   ])
 

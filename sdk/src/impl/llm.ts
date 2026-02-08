@@ -225,34 +225,11 @@ export async function* promptAiSdkStream(
     }
   }
 
-  const convertedMessages = convertCbToModelMessages(params)
-
-  // Debug: dump message summary to catch tool_use_id mismatches before they hit the API
-  console.error('[SDK DEBUG] promptAiSdkStream messages (' + convertedMessages.length + '):')
-  for (let i = 0; i < convertedMessages.length; i++) {
-    const m = convertedMessages[i] as Record<string, unknown>
-    const role = m.role as string
-    const content = m.content
-    if (role === 'tool' && Array.isArray(content)) {
-      const toolIds = (content as Array<{ toolCallId?: string; type?: string }>)
-        .filter(c => c.type === 'tool-result')
-        .map(c => c.toolCallId)
-      console.error(`  [${i}] ${role} toolCallIds=${JSON.stringify(toolIds)}`)
-    } else if (role === 'assistant' && Array.isArray(content)) {
-      const parts = (content as Array<{ type?: string; toolCallId?: string; toolName?: string }>)
-        .map(c => c.type === 'tool-call' ? `tool-call(${c.toolName}:${c.toolCallId})` : c.type)
-      console.error(`  [${i}] ${role} parts=[${parts.join(', ')}]`)
-    } else {
-      const tags = (m as { tags?: string[] }).tags
-      console.error(`  [${i}] ${role}${tags ? ' tags=' + JSON.stringify(tags) : ''}`)
-    }
-  }
-
   const response = streamText({
     ...params,
     prompt: undefined,
     model: aiSDKModel,
-    messages: convertedMessages,
+    messages: convertCbToModelMessages(params),
     // When using Claude OAuth, disable retries so we can immediately fall back to Codebuff
     // backend on rate limit errors instead of retrying 4 times first
     ...(isClaudeOAuth && { maxRetries: 0 }),

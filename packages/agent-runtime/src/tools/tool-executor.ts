@@ -120,8 +120,7 @@ export type ExecuteToolCallParams<T extends string = ToolName> = {
   toolCallId: string | undefined
   toolCalls: (CodebuffToolCall | CustomToolCall)[]
   toolResults: ToolMessage[]
-  toolResultsToAddAfterStream: ToolMessage[]
-  skipDirectResultPush?: boolean
+  toolResultsToAddToMessageHistory: ToolMessage[]
   userId: string | undefined
   userInputId: string
 
@@ -146,7 +145,7 @@ export async function executeToolCall<T extends ToolName>(
     previousToolCallFinished,
     toolCalls,
     toolResults,
-    toolResultsToAddAfterStream,
+    toolResultsToAddToMessageHistory,
     userInputId,
 
     onCostCalculated,
@@ -351,11 +350,7 @@ export async function executeToolCall<T extends ToolName>(
     toolResults.push(toolResult)
 
     if (!excludeToolFromMessageHistory) {
-      toolResultsToAddAfterStream.push(toolResult)
-    }
-
-    if (!excludeToolFromMessageHistory && !params.skipDirectResultPush) {
-      agentState.messageHistory.push(toolResult)
+      toolResultsToAddToMessageHistory.push(toolResult)
     }
 
     // After tool completes, resolve any pending creditsUsed promise
@@ -454,7 +449,7 @@ export async function executeCustomToolCall(
     toolCallId,
     toolCalls,
     toolResults,
-    toolResultsToAddAfterStream,
+    toolResultsToAddToMessageHistory,
     userInputId,
   } = params
   const toolCall: CustomToolCall | ToolCallError = parseRawCustomToolCall({
@@ -565,13 +560,10 @@ export async function executeCustomToolCall(
       toolResults.push(toolResult)
 
       if (!excludeToolFromMessageHistory) {
-        toolResultsToAddAfterStream.push(toolResult)
+        toolResultsToAddToMessageHistory.push(toolResult)
       }
 
-      if (!excludeToolFromMessageHistory && !params.skipDirectResultPush) {
-        agentState.messageHistory.push(toolResult)
-      }
-      return
+        return
     })
 }
 
