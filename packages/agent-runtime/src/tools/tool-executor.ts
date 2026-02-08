@@ -146,7 +146,7 @@ export async function executeToolCall<T extends ToolName>(
     previousToolCallFinished,
     toolCalls,
     toolResults,
-    toolResultsToAddAfterStream: _toolResultsToAddAfterStream,
+    toolResultsToAddAfterStream,
     userInputId,
 
     onCostCalculated,
@@ -350,6 +350,10 @@ export async function executeToolCall<T extends ToolName>(
 
     toolResults.push(toolResult)
 
+    if (!excludeToolFromMessageHistory) {
+      toolResultsToAddAfterStream.push(toolResult)
+    }
+
     if (!excludeToolFromMessageHistory && !params.skipDirectResultPush) {
       agentState.messageHistory.push(toolResult)
     }
@@ -450,7 +454,7 @@ export async function executeCustomToolCall(
     toolCallId,
     toolCalls,
     toolResults,
-    toolResultsToAddAfterStream: _toolResultsToAddAfterStream,
+    toolResultsToAddAfterStream,
     userInputId,
   } = params
   const toolCall: CustomToolCall | ToolCallError = parseRawCustomToolCall({
@@ -559,6 +563,10 @@ export async function executeCustomToolCall(
       })
 
       toolResults.push(toolResult)
+
+      if (!excludeToolFromMessageHistory) {
+        toolResultsToAddAfterStream.push(toolResult)
+      }
 
       if (!excludeToolFromMessageHistory && !params.skipDirectResultPush) {
         agentState.messageHistory.push(toolResult)

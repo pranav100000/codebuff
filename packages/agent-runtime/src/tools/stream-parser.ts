@@ -84,6 +84,10 @@ export async function processStream(
     userId,
   } = params
   const fullResponseChunks: string[] = [fullResponse]
+  const messageHistoryBeforeStream = expireMessages(
+    agentState.messageHistory,
+    'agentStep',
+  )
 
   // === MUTABLE STATE ===
   const toolResults: ToolMessage[] = []
@@ -111,9 +115,11 @@ export async function processStream(
     return (chunk: string | PrintModeEvent) => {
       if (typeof chunk !== 'string') {
         if (chunk.type === 'tool_call') {
-          assistantMessages.push(
-            assistantMessage({ ...chunk, type: 'tool-call' }),
-          )
+          if (chunk.includeToolCall !== false) {
+            assistantMessages.push(
+              assistantMessage({ ...chunk, type: 'tool-call' }),
+            )
+          }
         } else if (isXmlMode && chunk.type === 'tool_result') {
           const toolResultMessage: ToolMessage = {
             role: 'tool',
@@ -182,7 +188,7 @@ export async function processStream(
               : (toolName as ToolName),
             input: transformed ? transformed.input : input,
             fromHandleSteps: false,
-            skipDirectResultPush: isXmlMode,
+            skipDirectResultPush: true,
             fileProcessingState,
             fullResponse: fullResponseChunks.join(''),
             previousToolCallFinished: previousPromise,
@@ -199,7 +205,7 @@ export async function processStream(
             ...params,
             toolName,
             input,
-            skipDirectResultPush: isXmlMode,
+            skipDirectResultPush: true,
             fileProcessingState,
             fullResponse: fullResponseChunks.join(''),
             previousToolCallFinished: previousPromise,
@@ -327,20 +333,20 @@ export async function processStream(
     }
   }
 
-  // === FINALIZATION ===
-  agentState.messageHistory = buildArray<Message>([
-    ...expireMessages(agentState.messageHistory, 'agentStep'),
-    ...assistantMessages,
-    ...toolResultsToAddAfterStream,
-  ])
-
   if (!signal.aborted) {
     resolveStreamDonePromise()
     await previousToolCallFinished
   }
 
-  // Error messages must come AFTER tool results for proper API ordering
-  agentState.messageHistory.push(...errorMessages)
+  // === FINALIZATION ===
+  // Build message history from the pre-stream snapshot so tool_calls and
+  // tool_results are always appended in deterministic order.
+  agentState.messageHistory = buildArray<Message>([
+    ...messageHistoryBeforeStream,
+    ...assistantMessages,
+    ...toolResultsToAddAfterStream,
+    ...errorMessages,
+  ])
 
   return {
     fullResponse: fullResponseChunks.join(''),
