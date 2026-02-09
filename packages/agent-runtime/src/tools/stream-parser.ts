@@ -106,18 +106,10 @@ export async function processStream(
   // === RESPONSE HANDLER ===
   // Creates a response handler that captures tool events into assistantMessages.
   // When isXmlMode=true, also captures tool_result events for interleaved ordering.
-  function createResponseHandler(isXmlMode: boolean) {
+  function createResponseHandler() {
     return (chunk: string | PrintModeEvent) => {
       if (typeof chunk !== 'string') {
-        if (isXmlMode && chunk.type === 'tool_result') {
-          const toolResultMessage: ToolMessage = {
-            role: 'tool',
-            toolName: chunk.toolName,
-            toolCallId: chunk.toolCallId,
-            content: chunk.output,
-          }
-          assistantMessages.push(toolResultMessage)
-        } else if (chunk.type === 'error') {
+        if (chunk.type === 'error') {
           hadToolCallError = true
           errorMessages.push(
             userMessage(
@@ -134,12 +126,8 @@ export async function processStream(
 
   // === TOOL EXECUTION ===
   // Unified callback factory for both native and custom tools.
-  // isXmlMode=true: execute immediately, capture results inline (for XML tool calls)
-  // isXmlMode=false: defer execution, results added at end (for native tool calls)
   function createToolExecutionCallback(toolName: string, isXmlMode: boolean) {
-    const responseHandler = createResponseHandler(isXmlMode)
-    const resultsArray = isXmlMode ? [] : toolResultsToAddToMessageHistory
-
+    const responseHandler = createResponseHandler()
     return {
       onTagStart: () => { },
       onTagEnd: async (_: string, input: Record<string, string>) => {
@@ -185,7 +173,7 @@ export async function processStream(
             toolCalls,
             toolCallsToAddToMessageHistory,
             toolResults,
-            toolResultsToAddToMessageHistory: resultsArray,
+            toolResultsToAddToMessageHistory,
             excludeToolFromMessageHistory: false,
             onCostCalculated,
             onResponseChunk: responseHandler,
@@ -204,7 +192,7 @@ export async function processStream(
             toolCalls,
             toolCallsToAddToMessageHistory,
             toolResults,
-            toolResultsToAddToMessageHistory: resultsArray,
+            toolResultsToAddToMessageHistory,
             excludeToolFromMessageHistory: false,
             onResponseChunk: responseHandler,
           })
