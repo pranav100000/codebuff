@@ -1,12 +1,10 @@
 import { toolNames } from '@codebuff/common/tools/constants'
 import { buildArray } from '@codebuff/common/util/array'
 import {
-  jsonToolResult,
   assistantMessage,
   userMessage,
 } from '@codebuff/common/util/messages'
 import { generateCompactId } from '@codebuff/common/util/string'
-import { cloneDeep } from 'lodash'
 
 import { processStreamWithTools } from '../tool-stream-parser'
 import {
@@ -66,7 +64,6 @@ export async function processStream(
       typeof processStreamWithTools,
       | 'processors'
       | 'defaultProcessor'
-      | 'onError'
       | 'loggerOptions'
       | 'executeXmlToolCall'
     >,
@@ -149,7 +146,7 @@ export async function processStream(
     const resultsArray = isXmlMode ? [] : toolResultsToAddToMessageHistory
 
     return {
-      onTagStart: () => {},
+      onTagStart: () => { },
       onTagEnd: async (_: string, input: Record<string, string>) => {
         if (signal.aborted) {
           return
@@ -160,10 +157,10 @@ export async function processStream(
         // Check if this is an agent tool call that should be transformed to spawn_agents
         const transformed = !isNativeTool
           ? tryTransformAgentToolCall({
-              toolName,
-              input,
-              spawnableAgents: agentTemplate.spawnableAgents,
-            })
+            toolName,
+            input,
+            spawnableAgents: agentTemplate.spawnableAgents,
+          })
           : null
 
         // Read previousToolCallFinished at execution time to ensure proper sequential chaining.
@@ -193,6 +190,7 @@ export async function processStream(
             toolCalls,
             toolResults,
             toolResultsToAddToMessageHistory: resultsArray,
+            excludeToolFromMessageHistory: false,
             onCostCalculated,
             onResponseChunk: responseHandler,
           })
@@ -210,6 +208,7 @@ export async function processStream(
             toolCalls,
             toolResults,
             toolResultsToAddToMessageHistory: resultsArray,
+            excludeToolFromMessageHistory: false,
             onResponseChunk: responseHandler,
           })
         }
@@ -239,16 +238,6 @@ export async function processStream(
     ]),
     defaultProcessor: (name: string) =>
       createToolExecutionCallback(name, false),
-    onError: (toolName, error) => {
-      const toolResult: ToolMessage = {
-        role: 'tool',
-        toolName,
-        toolCallId: generateCompactId(),
-        content: jsonToolResult({ errorMessage: error }),
-      }
-      toolResults.push(cloneDeep(toolResult))
-      toolResultsToAddToMessageHistory.push(cloneDeep(toolResult))
-    },
     loggerOptions: {
       userId,
       model: agentTemplate.model,

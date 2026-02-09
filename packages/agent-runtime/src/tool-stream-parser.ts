@@ -41,7 +41,6 @@ export async function* processStreamWithTools(params: {
       params: Record<string, any>,
     ) => void | Promise<void>
   }
-  onError: (tagName: string, errorMessage: string) => void
   onResponseChunk: (chunk: PrintModeText | PrintModeError) => void
   logger: Logger
   loggerOptions?: {
@@ -60,7 +59,6 @@ export async function* processStreamWithTools(params: {
     stream,
     processors,
     defaultProcessor,
-    onError: _onError,
     onResponseChunk,
     logger,
     loggerOptions,

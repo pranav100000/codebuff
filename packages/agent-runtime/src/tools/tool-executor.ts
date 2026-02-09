@@ -533,7 +533,7 @@ export async function executeCustomToolCall(
       return clientToolResult.output satisfies ToolResultOutput[]
     })
     .then((result) => {
-      if (result === null) {
+      if (!result) {
         return
       }
       const toolResult = {
@@ -546,10 +546,6 @@ export async function executeCustomToolCall(
         { input, toolResult },
         `${toolName} custom tool call & result (${toolResult.toolCallId})`,
       )
-      if (result === undefined) {
-        return
-      }
-
       onResponseChunk({
         type: 'tool_result',
         toolName: toolResult.toolName,
@@ -563,7 +559,7 @@ export async function executeCustomToolCall(
         toolResultsToAddToMessageHistory.push(toolResult)
       }
 
-        return
+      return
     })
 }
 
