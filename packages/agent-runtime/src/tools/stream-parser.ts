@@ -87,6 +87,7 @@ export async function processStream(
   const toolResults: ToolMessage[] = []
   const toolResultsToAddToMessageHistory: ToolMessage[] = []
   const toolCalls: (CodebuffToolCall | CustomToolCall)[] = []
+  const toolCallsToAddToMessageHistory: (CodebuffToolCall | CustomToolCall)[] = []
   const assistantMessages: Message[] = []
   let hadToolCallError = false
   const errorMessages: Message[] = []
@@ -108,13 +109,7 @@ export async function processStream(
   function createResponseHandler(isXmlMode: boolean) {
     return (chunk: string | PrintModeEvent) => {
       if (typeof chunk !== 'string') {
-        if (chunk.type === 'tool_call') {
-          if (chunk.includeToolCall !== false) {
-            assistantMessages.push(
-              assistantMessage({ ...chunk, type: 'tool-call' }),
-            )
-          }
-        } else if (isXmlMode && chunk.type === 'tool_result') {
+        if (isXmlMode && chunk.type === 'tool_result') {
           const toolResultMessage: ToolMessage = {
             role: 'tool',
             toolName: chunk.toolName,
@@ -188,6 +183,7 @@ export async function processStream(
             previousToolCallFinished: previousPromise,
             toolCallId,
             toolCalls,
+            toolCallsToAddToMessageHistory,
             toolResults,
             toolResultsToAddToMessageHistory: resultsArray,
             excludeToolFromMessageHistory: false,
@@ -206,6 +202,7 @@ export async function processStream(
             previousToolCallFinished: previousPromise,
             toolCallId,
             toolCalls,
+            toolCallsToAddToMessageHistory,
             toolResults,
             toolResultsToAddToMessageHistory: resultsArray,
             excludeToolFromMessageHistory: false,
@@ -330,6 +327,7 @@ export async function processStream(
   agentState.messageHistory = buildArray<Message>([
     ...messageHistoryBeforeStream,
     ...assistantMessages,
+    ...toolCallsToAddToMessageHistory.map((toolCall) => assistantMessage({ ...toolCall, type: 'tool-call' })),
     ...toolResultsToAddToMessageHistory,
     ...errorMessages,
   ])

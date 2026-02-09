@@ -137,16 +137,16 @@ export async function runProgrammaticStep(
   if (!generator) {
     const createLogMethod =
       (level: 'debug' | 'info' | 'warn' | 'error') =>
-      (data: any, msg?: string) => {
-        logger[level](data, msg) // Log to backend
-        handleStepsLogChunk({
-          userInputId,
-          runId: agentState.runId ?? 'undefined',
-          level,
-          data,
-          message: msg,
-        })
-      }
+        (data: any, msg?: string) => {
+          logger[level](data, msg) // Log to backend
+          handleStepsLogChunk({
+            userInputId,
+            runId: agentState.runId ?? 'undefined',
+            level,
+            data,
+            message: msg,
+          })
+        }
 
     const streamingLogger = {
       debug: createLogMethod('debug'),
@@ -243,7 +243,7 @@ export async function runProgrammaticStep(
       if (!parseResult.success) {
         throw new Error(
           `Invalid yield value from handleSteps in agent ${template.id}: ${parseResult.error.message}. ` +
-            `Received: ${JSON.stringify(result.value)}`,
+          `Received: ${JSON.stringify(result.value)}`,
         )
       }
 
@@ -334,9 +334,8 @@ export async function runProgrammaticStep(
   } catch (error) {
     endTurn = true
 
-    const errorMessage = `Error executing handleSteps for agent ${template.id}: ${
-      error instanceof Error ? error.message : 'Unknown error'
-    }`
+    const errorMessage = `Error executing handleSteps for agent ${template.id}: ${error instanceof Error ? error.message : 'Unknown error'
+      }`
     logger.error(
       { error: getErrorObject(error), template: template.id },
       errorMessage,
@@ -485,6 +484,7 @@ async function executeSingleToolCall(
     // })
   }
 
+  const toolResultsToAddToMessageHistory: ToolMessage[] = []
   // Execute the tool call
   await executeToolCall({
     ...params,
@@ -494,7 +494,9 @@ async function executeSingleToolCall(
     excludeToolFromMessageHistory,
     fromHandleSteps: true,
     toolCallId,
-    toolResultsToAddToMessageHistory: [],
+    toolCalls: [],
+    toolCallsToAddToMessageHistory: [],
+    toolResultsToAddToMessageHistory,
 
     onResponseChunk: (chunk: string | PrintModeEvent) => {
       if (typeof chunk === 'string') {
@@ -538,6 +540,8 @@ async function executeSingleToolCall(
       onResponseChunk(chunk)
     },
   })
+
+  agentState.messageHistory.push(...toolResultsToAddToMessageHistory)
 
   // Get the latest tool result
   return toolResults[toolResults.length - 1]?.content

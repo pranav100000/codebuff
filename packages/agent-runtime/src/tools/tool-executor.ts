@@ -33,7 +33,7 @@ import type { Logger } from '@codebuff/common/types/contracts/logger'
 import type { ToolMessage } from '@codebuff/common/types/messages/codebuff-message'
 import type { ToolResultOutput } from '@codebuff/common/types/messages/content-part'
 import type { PrintModeEvent } from '@codebuff/common/types/print-mode'
-import type { AgentTemplateType , AgentState, Subgoal } from '@codebuff/common/types/session-state'
+import type { AgentTemplateType, AgentState, Subgoal } from '@codebuff/common/types/session-state'
 import type {
   CustomToolDefinitions,
   ProjectFileContext,
@@ -119,6 +119,7 @@ export type ExecuteToolCallParams<T extends string = ToolName> = {
   tools: ToolSet
   toolCallId: string | undefined
   toolCalls: (CodebuffToolCall | CustomToolCall)[]
+  toolCallsToAddToMessageHistory: (CodebuffToolCall | CustomToolCall)[]
   toolResults: ToolMessage[]
   toolResultsToAddToMessageHistory: ToolMessage[]
   userId: string | undefined
@@ -144,6 +145,7 @@ export async function executeToolCall<T extends ToolName>(
     logger,
     previousToolCallFinished,
     toolCalls,
+    toolCallsToAddToMessageHistory,
     toolResults,
     toolResultsToAddToMessageHistory,
     userInputId,
@@ -298,8 +300,6 @@ export async function executeToolCall<T extends ToolName>(
     includeToolCall: !excludeToolFromMessageHistory,
   })
 
-  toolCalls.push(toolCall)
-
   // Cast to any to avoid type errors
   const handler = codebuffToolHandlers[
     toolName
@@ -310,6 +310,12 @@ export async function executeToolCall<T extends ToolName>(
     toolName === 'spawn_agents'
       ? { ...toolCall, input: effectiveInput }
       : toolCall
+
+  toolCalls.push(finalToolCall)
+  if (!excludeToolFromMessageHistory) {
+    toolCallsToAddToMessageHistory.push(finalToolCall)
+  }
+
 
   const toolResultPromise = handler({
     ...params,
@@ -448,6 +454,7 @@ export async function executeCustomToolCall(
     requestToolCall,
     toolCallId,
     toolCalls,
+    toolCallsToAddToMessageHistory,
     toolResults,
     toolResultsToAddToMessageHistory,
     userInputId,
@@ -512,6 +519,9 @@ export async function executeCustomToolCall(
   })
 
   toolCalls.push(toolCall)
+  if (!excludeToolFromMessageHistory) {
+    toolCallsToAddToMessageHistory.push(toolCall)
+  }
 
   return previousToolCallFinished
     .then(async () => {
