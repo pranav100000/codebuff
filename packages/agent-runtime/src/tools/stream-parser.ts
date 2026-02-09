@@ -56,6 +56,7 @@ export async function processStream(
     | 'state'
     | 'toolCallId'
     | 'toolCalls'
+    | 'toolCallsToAddToMessageHistory'
     | 'toolName'
     | 'toolResults'
     | 'toolResultsToAddToMessageHistory'

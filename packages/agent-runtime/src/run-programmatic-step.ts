@@ -81,6 +81,7 @@ export async function runProgrammaticStep(
     | 'fileProcessingState'
     | 'toolCallId'
     | 'toolCalls'
+    | 'toolCallsToAddToMessageHistory'
     | 'toolResults'
     | 'toolResultsToAddToMessageHistory'
   > &
@@ -427,6 +428,7 @@ type ExecuteToolCallsArrayParams = Omit<
   | 'autoInsertEndStepParam'
   | 'excludeToolFromMessageHistory'
   | 'toolCallId'
+  | 'toolCallsToAddToMessageHistory'
   | 'toolResultsToAddToMessageHistory'
 > & {
   agentState: AgentState
